@@ -1,0 +1,282 @@
+{% extends "layout.html" %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+{% if show_login %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+        <div class="card shadow">
+            <div class="card-header bg-warning">
+                <h4 class="mb-0"><i class="fas fa-lock me-2"></i>Admin Login Required</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('login') }}">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Username</label>
+                        <input type="text" class="form-control" id="username" name="username" required>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="password" class="form-label">Password</label>
+                        <input type="password" class="form-control" id="password" name="password" required>
+                    </div>
+                    
+                    {% if login_error %}
+                    <div class="alert alert-danger mb-4">
+                        <i class="fas fa-exclamation-triangle me-2"></i>{{ login_error }}
+                    </div>
+                    {% endif %}
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-warning">
+                            <i class="fas fa-sign-in-alt me-2"></i>Login
+                        </button>
+                        <a href="{{ url_for('home') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-home me-2"></i>Back to Home
+                        </a>
+                    </div>
+                </form>
+                
+                <div class="mt-4 text-center">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Default credentials: admin / admin123
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">
+        <i class="fas fa-tachometer-alt me-2 text-primary"></i>
+        Admin Dashboard
+        {% if admin_username %}
+        <small class="text-muted fs-6">Welcome, {{ admin_username }}</small>
+        {% endif %}
+    </h2>
+    <div>
+        <a href="{{ url_for('export_csv') }}" class="btn btn-success me-2">
+            <i class="fas fa-file-export me-1"></i>Export CSV
+        </a>
+        <a href="{{ url_for('logout') }}" class="btn btn-danger">
+            <i class="fas fa-sign-out-alt me-1"></i>Logout
+        </a>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-4 mb-3">
+        <div class="card bg-primary text-white shadow">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-uppercase small">Total Feedback</h6>
+                        <h2 class="mb-0">{{ total_feedback }}</h2>
+                    </div>
+                    <i class="fas fa-comments fa-3x opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-3">
+        <div class="card bg-success text-white shadow">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-uppercase small">Average Rating</h6>
+                        <h2 class="mb-0">{{ avg_rating }} <small>/5</small></h2>
+                    </div>
+                    <i class="fas fa-star fa-3x opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-3">
+        <div class="card bg-info text-white shadow">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title text-uppercase small">API Available</h6>
+                        <h4 class="mb-0">GET /api/feedback</h4>
+                    </div>
+                    <i class="fas fa-code fa-3x opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Rating Distribution Chart -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header bg-light">
+                <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Rating Distribution</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="ratingChart" height="100"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Feedback Table -->
+<div class="card shadow">
+    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+            <i class="fas fa-list me-2"></i>All Feedback Entries
+            <span class="badge bg-primary ms-2">{{ feedback|length }}</span>
+        </h5>
+        <div>
+            <button onclick="refreshData()" class="btn btn-sm btn-outline-primary me-2">
+                <i class="fas fa-sync-alt me-1"></i>Refresh
+            </button>
+            <button onclick="exportData()" class="btn btn-sm btn-outline-success">
+                <i class="fas fa-download me-1"></i>Export
+            </button>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Rating</th>
+                        <th>Comments</th>
+                        <th>Date Submitted</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if feedback %}
+                        {% for item in feedback %}
+                        <tr>
+                            <td>{{ item.id }}</td>
+                            <td>{{ item.name }}</td>
+                            <td>{{ item.email }}</td>
+                            <td>
+                                <span class="badge bg-warning text-dark">
+                                    {% for i in range(item.rating) %}★{% endfor %}
+                                    {{ item.rating }}/5
+                                </span>
+                            </td>
+                            <td class="text-truncate" style="max-width: 200px;" 
+                                title="{{ item.comments }}">
+                                {{ item.comments }}
+                            </td>
+                            <td>{{ item.date_submitted }}</td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center py-4">
+                                <i class="fas fa-inbox fa-2x text-muted mb-3"></i>
+                                <p class="text-muted">No feedback submitted yet.</p>
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    {% if not show_login %}
+    // Initialize rating distribution chart
+    const ctx = document.getElementById('ratingChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['1 Star', '2 Stars', '3 Stars', '4 Stars', '5 Stars'],
+            datasets: [{
+                label: 'Number of Ratings',
+                data: [
+                    {{ rating_dist[1] }},
+                    {{ rating_dist[2] }},
+                    {{ rating_dist[3] }},
+                    {{ rating_dist[4] }},
+                    {{ rating_dist[5] }}
+                ],
+                backgroundColor: [
+                    '#dc3545',
+                    '#fd7e14',
+                    '#ffc107',
+                    '#20c997',
+                    '#198754'
+                ],
+                borderColor: [
+                    '#c82333',
+                    '#e96a0c',
+                    '#e0a800',
+                    '#1ba87e',
+                    '#157347'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.dataset.label}: ${context.raw}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            }
+        }
+    });
+    
+    // Auto-refresh data every 30 seconds
+    setInterval(refreshData, 30000);
+    {% endif %}
+});
+
+function refreshData() {
+    window.location.reload();
+}
+
+function exportData() {
+    window.location.href = '/export-csv';
+}
+
+// Fetch API data
+async function fetchAPIData() {
+    try {
+        const response = await fetch('/api/feedback');
+        if (response.ok) {
+            const data = await response.json();
+            console.log('API Data:', data);
+            return data;
+        }
+    } catch (error) {
+        console.error('Error fetching API data:', error);
+    }
+}
+</script>
+{% endblock %}

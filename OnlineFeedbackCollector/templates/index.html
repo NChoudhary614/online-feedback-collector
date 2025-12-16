@@ -1,0 +1,206 @@
+{% extends "layout.html" %}
+
+{% block title %}Submit Feedback{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h3 class="mb-0"><i class="fas fa-edit me-2"></i>Submit Your Feedback</h3>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-4">Your feedback helps us improve our services. Please fill out the form below.</p>
+                
+                <form id="feedbackForm" novalidate>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="name" class="form-label">Full Name *</label>
+                            <input type="text" class="form-control" id="name" name="name" required>
+                            <div class="invalid-feedback">Please enter your name.</div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="email" class="form-label">Email Address *</label>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                            <div class="invalid-feedback">Please enter a valid email address.</div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Rating *</label>
+                        <div class="rating-input">
+                            <div class="d-flex justify-content-center mb-3">
+                                {% for i in range(5, 0, -1) %}
+                                <div class="form-check form-check-inline mx-2">
+                                    <input class="form-check-input" type="radio" name="rating" 
+                                           id="rating{{ i }}" value="{{ i }}" required>
+                                    <label class="form-check-label rating-star" for="rating{{ i }}">
+                                        {% for j in range(i) %}
+                                        <i class="fas fa-star text-warning"></i>
+                                        {% endfor %}
+                                        <span class="ms-1">({{ i }})</span>
+                                    </label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <div class="invalid-feedback d-block text-center">Please select a rating.</div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="comments" class="form-label">Comments *</label>
+                        <textarea class="form-control" id="comments" name="comments" 
+                                  rows="5" placeholder="Please share your thoughts..." required></textarea>
+                        <div class="invalid-feedback">Please enter your comments.</div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <button type="reset" class="btn btn-secondary me-md-2">
+                            <i class="fas fa-redo me-1"></i>Clear Form
+                        </button>
+                        <button type="submit" class="btn btn-primary" id="submitBtn">
+                            <i class="fas fa-paper-plane me-1"></i>Submit Feedback
+                        </button>
+                    </div>
+                </form>
+                
+                <div id="responseMessage" class="mt-4"></div>
+            </div>
+        </div>
+        
+        <div class="card shadow mt-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>About This System</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 text-center mb-3">
+                        <div class="feature-icon">
+                            <i class="fas fa-shield-alt fa-2x text-primary mb-2"></i>
+                            <h6>Secure & Private</h6>
+                            <p class="small text-muted">Your information is kept confidential</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-center mb-3">
+                        <div class="feature-icon">
+                            <i class="fas fa-bolt fa-2x text-success mb-2"></i>
+                            <h6>Quick Submission</h6>
+                            <p class="small text-muted">Submit feedback in under 2 minutes</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-center mb-3">
+                        <div class="feature-icon">
+                            <i class="fas fa-chart-line fa-2x text-info mb-2"></i>
+                            <h6>Data Analytics</h6>
+                            <p class="small text-muted">Real-time analytics for administrators</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('feedbackForm');
+    const responseDiv = document.getElementById('responseMessage');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        if (!form.checkValidity()) {
+            e.stopPropagation();
+            form.classList.add('was-validated');
+            return;
+        }
+        
+        // Disable submit button and show loading
+        submitBtn.disabled = true;
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Submitting...';
+        
+        try {
+            const formData = new FormData(form);
+            
+            const response = await fetch('/submit-feedback', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok && result.success) {
+                // Success
+                responseDiv.innerHTML = `
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        <i class="fas fa-check-circle me-2"></i>
+                        <strong>Thank you!</strong> ${result.message}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                `;
+                form.reset();
+                form.classList.remove('was-validated');
+                
+                // Scroll to response message
+                responseDiv.scrollIntoView({ behavior: 'smooth' });
+            } else {
+                // Error
+                responseDiv.innerHTML = `
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        <strong>Error:</strong> ${result.error || 'Something went wrong. Please try again.'}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            responseDiv.innerHTML = `
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                    <strong>Network Error:</strong> Please check your connection and try again.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+        } finally {
+            // Restore submit button
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        }
+    });
+    
+    // Real-time validation
+    const inputs = form.querySelectorAll('input, textarea');
+    inputs.forEach(input => {
+        input.addEventListener('input', function() {
+            if (input.checkValidity()) {
+                input.classList.remove('is-invalid');
+                input.classList.add('is-valid');
+            } else {
+                input.classList.remove('is-valid');
+                input.classList.add('is-invalid');
+            }
+        });
+        
+        input.addEventListener('blur', function() {
+            if (!input.checkValidity()) {
+                input.classList.add('is-invalid');
+            }
+        });
+    });
+    
+    // Auto-hide alerts after 5 seconds
+    setInterval(() => {
+        const alerts = document.querySelectorAll('.alert');
+        alerts.forEach(alert => {
+            const bsAlert = new bootstrap.Alert(alert);
+            setTimeout(() => bsAlert.close(), 5000);
+        });
+    }, 5000);
+});
+</script>
+{% endblock %}
